@@ -1,0 +1,34 @@
+{
+  "modulo": "3-4-3",
+  "titolari": {
+    "portiere": "Nome Portiere",
+    "difensori": [
+      "Difensore 1",
+      "Difensore 2",
+      "Difensore 3"
+    ],
+    "centrocampisti": [
+      "Centrocampista 1",
+      "Centrocampista 2",
+      "Centrocampista 3",
+      "Centrocampista 4"
+    ],
+    "attaccanti": [
+      "Attaccante 1",
+      "Attaccante 2",
+      "Attaccante 3"
+    ]
+  },
+  "panchina": [
+    "Portiere Panchina",
+    "Difensore Panchina 1",
+    "Difensore Panchina 2",
+    "Centrocampista Panchina 1",
+    "Centrocampista Panchina 2",
+    "Attaccante Panchina 1",
+    "Attaccante Panchina 2"
+  ],
+  "capitano": "Nome Capitano",
+  "vice_capitano": "Nome Vice Capitano",
+  "note": "Questa è la formazione standard che verrà inserita automaticamente ogni martedì e giovedì. Modifica i nomi dei giocatori con quelli reali della tua rosa."
+}
