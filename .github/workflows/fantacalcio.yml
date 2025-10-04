@@ -1,0 +1,81 @@
+name: Fantacalcio Bot - Inserimento Automatico
+
+on:
+  schedule:
+    # Esegui ogni martedì alle 11:00 UTC (13:00 ora italiana)
+    - cron: '0 11 * * 2'
+    # Esegui ogni giovedì alle 11:00 UTC (13:00 ora italiana)
+    - cron: '0 11 * * 4'
+  
+  # Permette di eseguire manualmente il workflow dalla UI di GitHub
+  workflow_dispatch:
+
+jobs:
+  inserisci-formazione:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: 📥 Checkout repository
+      uses: actions/checkout@v4
+    
+    - name: 🐍 Setup Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+    
+    - name: 🌐 Setup Chrome
+      uses: browser-actions/setup-chrome@latest
+      with:
+        chrome-version: stable
+    
+    - name: 🚗 Install ChromeDriver
+      uses: nanasess/setup-chromedriver@v2
+    
+    - name: 📦 Install dependencies
+      run: |
+        pip install selenium
+    
+    - name: ✅ Verifica installazione Chrome
+      run: |
+        echo "Verifica Google Chrome..."
+        which google-chrome
+        google-chrome --version
+        echo "Verifica ChromeDriver..."
+        which chromedriver
+        chromedriver --version
+    
+    - name: 🤖 Esegui bot Fantacalcio
+      id: bot_execution
+      env:
+        FANTACALCIO_USERNAME: ${{ secrets.FANTACALCIO_USERNAME }}
+        FANTACALCIO_PASSWORD: ${{ secrets.FANTACALCIO_PASSWORD }}
+        GMAIL_ADDRESS: ${{ secrets.GMAIL_ADDRESS }}
+        GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+        CHROME_BIN: /usr/bin/google-chrome
+      run: |
+        echo "🚀 Avvio Fantacalcio Bot..."
+        python fantacalcio_bot.py
+        echo "✅ Esecuzione completata"
+    
+    - name: 📄 Upload logs in caso di errore
+      if: failure()
+      uses: actions/upload-artifact@v4
+      with:
+        name: error-logs-${{ github.run_number }}
+        path: |
+          fantacalcio_log.txt
+          errore_*.png
+        retention-days: 7
+    
+    - name: 📊 Riepilogo esecuzione
+      if: always()
+      run: |
+        echo "================================"
+        echo "📊 RIEPILOGO ESECUZIONE"
+        echo "================================"
+        echo "Workflow: ${{ github.workflow }}"
+        echo "Run ID: ${{ github.run_id }}"
+        echo "Run Number: ${{ github.run_number }}"
+        echo "Status: ${{ job.status }}"
+        echo "Timestamp: $(date)"
+        echo "================================"
