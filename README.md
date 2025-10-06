@@ -22,7 +22,7 @@ Bot automatico per salvare la formazione su [leghe.fantacalcio.it](https://leghe
 
 - **Lega**: Lega Paralimpica Seregno
 - **URL**: https://leghe.fantacalcio.it/lega-paralimpica-seregno
-- **Username**: saladany99
+- **Username**: ------
 - **Email notifiche**: saladaniele99@gmail.com
 - **Metodo**: Salvataggio diretto senza modifiche alla formazione
 
@@ -50,8 +50,8 @@ Crea questi **4 secrets**:
 
 | Nome Secret | Valore | Descrizione |
 |-------------|--------|-------------|
-| `FANTACALCIO_USERNAME` | `saladany99` | Username del sito fantacalcio.it |
-| `FANTACALCIO_PASSWORD` | `Ceredo99!` | Password del sito fantacalcio.it |
+| `FANTACALCIO_USERNAME` | `-----` | Username del sito fantacalcio.it |
+| `FANTACALCIO_PASSWORD` | `------` | Password del sito fantacalcio.it |
 | `GMAIL_ADDRESS` | `saladaniele99@gmail.com` | Email per inviare notifiche |
 | `GMAIL_APP_PASSWORD` | `[16 caratteri]` | Password app generata al punto 1 |
 
