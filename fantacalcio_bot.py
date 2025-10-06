@@ -329,14 +329,14 @@ Inserisci/Salva MANUALMENTE la formazione prima dell'inizio delle partite!
                 """
             
             msg['From'] = mittente
-            msg['To'] = destinatario
+            msg['To'] = ', '.join(destinatari)
             msg.attach(MIMEText(testo, 'plain'))
             
             with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
                 server.login(mittente, password)
                 server.send_message(msg)
             
-            logging.info(f"✉️ Email di notifica inviata a {destinatario}")
+            logging.info(f"✉️ Email di notifica inviata a {', '.join(destinatari)}")
             return True
             
         except Exception as e:
@@ -421,4 +421,5 @@ if __name__ == "__main__":
         print("📧  Dovresti aver ricevuto una email di notifica errore")
         print("🔍  Screenshot salvato in errore_*.png")
         exit(1)
+
 
