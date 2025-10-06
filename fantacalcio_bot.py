@@ -277,7 +277,7 @@ class FantacalcioBot:
         try:
             mittente = os.environ.get('GMAIL_ADDRESS')
             password = os.environ.get('GMAIL_APP_PASSWORD')
-            destinatario = 'saladaniele99@gmail.com'
+            destinatari = ['saladaniele99@gmail.com', 'davidebanini99@gmail.com']
             
             if not mittente or not password:
                 logging.warning("⚠️ Credenziali email non configurate, notifica saltata")
@@ -421,3 +421,4 @@ if __name__ == "__main__":
         print("📧  Dovresti aver ricevuto una email di notifica errore")
         print("🔍  Screenshot salvato in errore_*.png")
         exit(1)
+
