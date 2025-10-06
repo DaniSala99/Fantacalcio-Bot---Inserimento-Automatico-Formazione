@@ -1,20 +1,12 @@
 """
 Fantacalcio Bot - Salvataggio Automatico Formazione
-VERSIONE FINALE SEMPLIFICATA per Lega Paralimpica Seregno
+VERSIONE FINALE con gestione popup cookie e banner pubblicitario
 
 Repository: https://github.com/tuousername/fantacalcio-bot
 Lega: https://leghe.fantacalcio.it/lega-paralimpica-seregno
 
 Username: saladany99
 Email notifiche: saladaniele99@gmail.com
-
-Funzionamento:
-1. Login automatico con credenziali
-2. Navigazione a "Schiera Formazione"
-3. Click diretto su "Salva per tutte le competizioni"
-4. Invio email di conferma/errore
-
-NOTA: Salva la formazione attuale senza modificarla, mantenendo panchina e titolari come sono.
 """
 
 from selenium import webdriver
@@ -22,6 +14,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.chrome.options import Options
+from selenium.common.exceptions import TimeoutException, NoSuchElementException
 import time
 import logging
 import os
@@ -70,7 +63,73 @@ class FantacalcioBot:
         self.wait = WebDriverWait(self.driver, 20)
         
         logging.info("✅ Browser configurato con successo")
-        
+    
+    def chiudi_popup_cookie(self):
+        """Chiude il popup dei cookie se presente"""
+        try:
+            logging.info("Controllo presenza popup cookie...")
+            
+            # Usa il selettore ESATTO che hai trovato
+            wait_popup = WebDriverWait(self.driver, 8)
+            
+            try:
+                # Pulsante "Accept all" con id="pt-accept-all"
+                cookie_btn = wait_popup.until(
+                    EC.element_to_be_clickable((By.ID, "pt-accept-all"))
+                )
+                cookie_btn.click()
+                logging.info("✅ Popup cookie chiuso (Accept all)")
+                time.sleep(2)
+                return True
+            except TimeoutException:
+                logging.info("ℹ️ Popup cookie non trovato (già chiuso o non presente)")
+                return False
+                
+        except Exception as e:
+            logging.info(f"ℹ️ Gestione popup cookie: {str(e)}")
+            return False
+    
+    def chiudi_banner_pubblicitario(self):
+        """Chiude il banner pubblicitario se presente"""
+        try:
+            logging.info("Controllo presenza banner pubblicitario...")
+            
+            wait_banner = WebDriverWait(self.driver, 5)
+            
+            try:
+                # Cerca il pulsante di chiusura con l'SVG che hai trovato
+                # Il pulsante contiene un SVG con path specifico
+                close_btn = wait_banner.until(
+                    EC.element_to_be_clickable((
+                        By.XPATH, 
+                        "//button[.//svg[@viewBox='0 0 48 48'] and .//path[contains(@d, 'M38 12.83')]]"
+                    ))
+                )
+                close_btn.click()
+                logging.info("✅ Banner pubblicitario chiuso")
+                time.sleep(2)
+                return True
+            except TimeoutException:
+                # Prova con un selettore alternativo più generico
+                try:
+                    close_btn = wait_banner.until(
+                        EC.element_to_be_clickable((
+                            By.XPATH,
+                            "//button[contains(@aria-label, 'Close') or contains(@title, 'Close')]"
+                        ))
+                    )
+                    close_btn.click()
+                    logging.info("✅ Banner pubblicitario chiuso (metodo alternativo)")
+                    time.sleep(2)
+                    return True
+                except:
+                    logging.info("ℹ️ Banner pubblicitario non trovato")
+                    return False
+                    
+        except Exception as e:
+            logging.info(f"ℹ️ Gestione banner pubblicitario: {str(e)}")
+            return False
+    
     def login(self):
         """Effettua il login al sito"""
         try:
@@ -81,18 +140,27 @@ class FantacalcioBot:
             # Vai alla pagina della lega
             logging.info("Navigazione a: https://leghe.fantacalcio.it/lega-paralimpica-seregno")
             self.driver.get("https://leghe.fantacalcio.it/lega-paralimpica-seregno")
-            time.sleep(3)
+            time.sleep(4)
             
-            # Clicca sul pulsante "Accedi"
+            # STEP 1.1: CHIUDI IL POPUP DEI COOKIE
+            self.chiudi_popup_cookie()
+            
+            # STEP 1.2: Clicca sul pulsante "Accedi"
             logging.info("Ricerca pulsante 'Accedi'...")
             accedi_btn = self.wait.until(
                 EC.element_to_be_clickable((By.XPATH, "//a[@href='https://leghe.fantacalcio.it/login' and contains(@class, 'btn-primary')]"))
             )
+            # Scroll al pulsante per sicurezza
+            self.driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", accedi_btn)
+            time.sleep(1)
             accedi_btn.click()
             logging.info("✅ Click su 'Accedi' effettuato")
-            time.sleep(3)
+            time.sleep(4)
             
-            # Inserisci username
+            # STEP 1.3: CHIUDI IL BANNER PUBBLICITARIO
+            self.chiudi_banner_pubblicitario()
+            
+            # STEP 1.4: Inserisci username
             logging.info(f"Inserimento username: {self.username}")
             username_field = self.wait.until(
                 EC.presence_of_element_located((By.CSS_SELECTOR, "input[formcontrolname='username']"))
@@ -102,7 +170,7 @@ class FantacalcioBot:
             logging.info("✅ Username inserito")
             time.sleep(1)
             
-            # Inserisci password
+            # STEP 1.5: Inserisci password
             logging.info("Inserimento password...")
             password_field = self.wait.until(
                 EC.presence_of_element_located((By.CSS_SELECTOR, "input[formcontrolname='password']"))
@@ -112,7 +180,7 @@ class FantacalcioBot:
             logging.info("✅ Password inserita")
             time.sleep(1)
             
-            # Clicca su LOGIN
+            # STEP 1.6: Clicca su LOGIN
             logging.info("Click su pulsante LOGIN...")
             login_btn = self.wait.until(
                 EC.element_to_be_clickable((By.XPATH, "//button[contains(@class, 'ant-btn-primary') and .//span[text()='LOGIN']]"))
@@ -130,9 +198,7 @@ class FantacalcioBot:
             return False
     
     def salva_formazione(self):
-        """
-        Salva la formazione attuale (già configurata) per tutte le competizioni
-        """
+        """Salva la formazione attuale per tutte le competizioni"""
         try:
             logging.info("=" * 60)
             logging.info("STEP 2: SALVATAGGIO FORMAZIONE")
@@ -146,6 +212,8 @@ class FantacalcioBot:
                     "//a[@class='shortcut' and @href='https://leghe.fantacalcio.it/lega-paralimpica-seregno/area-gioco/inserisci-formazione']"
                 ))
             )
+            self.driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", inserisci_formazione_link)
+            time.sleep(1)
             inserisci_formazione_link.click()
             logging.info("✅ Click su 'Schiera Formazione' effettuato")
             time.sleep(4)
@@ -158,6 +226,9 @@ class FantacalcioBot:
                     "//button[contains(@class, 'btn-orange') and contains(@onclick, 'saveFormationForAllComps')]"
                 ))
             )
+            # Scroll al pulsante
+            self.driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", salva_btn)
+            time.sleep(1)
             salva_btn.click()
             logging.info("✅ Click su 'Salva per tutte le competizioni' effettuato")
             time.sleep(4)
@@ -186,8 +257,6 @@ class FantacalcioBot:
             
             if successo:
                 msg['Subject'] = "✅ Fantacalcio Bot - Formazione Salvata!"
-                
-                # Versione testo
                 testo = f"""
 ✅ FORMAZIONE SALVATA CON SUCCESSO!
 
@@ -195,77 +264,20 @@ class FantacalcioBot:
 🏆 Lega: Lega Paralimpica Seregno
 👤 Username: saladany99
 
-La formazione attuale è stata salvata automaticamente per tutte le competizioni 
-(Campionato, Coppa Italia, Supercoppa, etc.).
+La formazione attuale è stata salvata automaticamente per tutte le competizioni.
 
-La formazione precedentemente configurata (titolari e panchina) è stata mantenuta 
-e salvata senza modifiche.
-
-{dettagli}
+✅ Titolari: mantenuti come configurato
+✅ Panchina: mantenuta come configurata
+✅ Nessuna modifica apportata
 
 Non è necessaria alcuna azione da parte tua.
 Buona fortuna! ⚽
 
 ---
 🤖 Messaggio automatico dal Fantacalcio Bot
-Repository: https://github.com/tuousername/fantacalcio-bot
                 """
-                
-                # Versione HTML
-                html = f"""
-                <html>
-                <head>
-                    <style>
-                        body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
-                        .header {{ background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
-                                  color: white; padding: 30px; border-radius: 10px; text-align: center; }}
-                        .content {{ padding: 20px; background-color: #f9f9f9; margin-top: 20px; 
-                                   border-radius: 10px; }}
-                        .info {{ background-color: white; padding: 20px; margin: 15px 0; 
-                                border-left: 5px solid #4CAF50; border-radius: 5px; }}
-                        .footer {{ margin-top: 30px; padding-top: 20px; border-top: 2px solid #ddd; 
-                                  color: #666; font-size: 12px; text-align: center; }}
-                        strong {{ color: #4CAF50; }}
-                        h1 {{ margin: 0; font-size: 28px; }}
-                        .emoji {{ font-size: 40px; }}
-                    </style>
-                </head>
-                <body>
-                    <div class="header">
-                        <div class="emoji">✅</div>
-                        <h1>Formazione Salvata!</h1>
-                    </div>
-                    
-                    <div class="content">
-                        <div class="info">
-                            <p><strong>📅 Data e ora:</strong> {timestamp}</p>
-                            <p><strong>🏆 Lega:</strong> Lega Paralimpica Seregno</p>
-                            <p><strong>👤 Username:</strong> saladany99</p>
-                            <p><strong>✅ Stato:</strong> Formazione salvata per tutte le competizioni</p>
-                        </div>
-                        
-                        <p>La <strong>formazione attuale</strong> è stata salvata automaticamente per 
-                        <strong>tutte le competizioni</strong> (Campionato, Coppa Italia, Supercoppa, etc.).</p>
-                        
-                        <p>✅ Titolari: mantenuti come configurato<br>
-                        ✅ Panchina: mantenuta come configurata<br>
-                        ✅ Nessuna modifica apportata</p>
-                        
-                        <p>Non è necessaria alcuna azione da parte tua. Buona fortuna! ⚽</p>
-                    </div>
-                    
-                    <div class="footer">
-                        <p>🤖 Messaggio automatico dal <strong>Fantacalcio Bot</strong></p>
-                        <p>Prossima esecuzione automatica: Martedì/Giovedì alle 13:00</p>
-                    </div>
-                </body>
-                </html>
-                """
-                
             else:
                 msg['Subject'] = "❌ URGENTE - Fantacalcio Bot: Formazione NON salvata!"
-                
-                # Versione testo
                 testo = f"""
 ❌ ERRORE NEL SALVATAGGIO FORMAZIONE!
 
@@ -281,79 +293,13 @@ Inserisci/Salva MANUALMENTE la formazione prima dell'inizio delle partite!
 
 👉 Vai su: https://leghe.fantacalcio.it/lega-paralimpica-seregno/area-gioco/inserisci-formazione
 
-📊 Log dettagliati disponibili su:
-https://github.com/tuousername/fantacalcio-bot/actions
-
 ---
 🤖 Messaggio automatico dal Fantacalcio Bot
-                """
-                
-                # Versione HTML
-                html = f"""
-                <html>
-                <head>
-                    <style>
-                        body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
-                        .header {{ background: linear-gradient(135deg, #f44336 0%, #e91e63 100%); 
-                                  color: white; padding: 30px; border-radius: 10px; text-align: center; }}
-                        .content {{ padding: 20px; background-color: #f9f9f9; margin-top: 20px; 
-                                   border-radius: 10px; }}
-                        .error {{ background-color: #fff3cd; padding: 20px; margin: 15px 0; 
-                                 border-left: 5px solid #ffc107; border-radius: 5px; }}
-                        .action {{ background-color: #e3f2fd; padding: 20px; margin: 15px 0; 
-                                  border-left: 5px solid #2196F3; border-radius: 5px; }}
-                        .footer {{ margin-top: 30px; padding-top: 20px; border-top: 2px solid #ddd; 
-                                  color: #666; font-size: 12px; text-align: center; }}
-                        .urgent {{ color: #f44336; font-weight: bold; font-size: 18px; }}
-                        pre {{ background-color: white; padding: 15px; border-radius: 5px; 
-                              overflow-x: auto; border: 1px solid #ddd; }}
-                        h1 {{ margin: 0; font-size: 28px; }}
-                        .emoji {{ font-size: 40px; }}
-                        a {{ color: #2196F3; font-weight: bold; text-decoration: none; }}
-                        a:hover {{ text-decoration: underline; }}
-                    </style>
-                </head>
-                <body>
-                    <div class="header">
-                        <div class="emoji">❌</div>
-                        <h1>Errore Salvataggio!</h1>
-                    </div>
-                    
-                    <div class="content">
-                        <div class="error">
-                            <p><strong>📅 Data e ora:</strong> {timestamp}</p>
-                            <p><strong>🏆 Lega:</strong> Lega Paralimpica Seregno</p>
-                            <p><strong>👤 Username:</strong> saladany99</p>
-                            <p class="urgent">⚠️ Stato: OPERAZIONE FALLITA</p>
-                        </div>
-                        
-                        <div class="error">
-                            <h3>🚨 Dettagli errore:</h3>
-                            <pre>{dettagli}</pre>
-                        </div>
-                        
-                        <div class="action">
-                            <h3>⚡ AZIONE RICHIESTA:</h3>
-                            <p class="urgent">Inserisci/Salva MANUALMENTE la formazione prima dell'inizio delle partite!</p>
-                            <p>👉 <a href="https://leghe.fantacalcio.it/lega-paralimpica-seregno/area-gioco/inserisci-formazione">
-                            Vai al sito Fantacalcio</a></p>
-                        </div>
-                        
-                        <p>📊 Log dettagliati e screenshot disponibili su 
-                        <a href="https://github.com/tuousername/fantacalcio-bot/actions">GitHub Actions</a></p>
-                    </div>
-                    
-                    <div class="footer">
-                        <p>🤖 Messaggio automatico dal <strong>Fantacalcio Bot</strong></p>
-                    </div>
-                </body>
-                </html>
                 """
             
             msg['From'] = mittente
             msg['To'] = destinatario
             msg.attach(MIMEText(testo, 'plain'))
-            msg.attach(MIMEText(html, 'html'))
             
             with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
                 server.login(mittente, password)
@@ -374,7 +320,7 @@ https://github.com/tuousername/fantacalcio-bot/actions
             self.setup_driver()
             
             if not self.login():
-                raise Exception("Login fallito - Verifica username e password nei GitHub Secrets")
+                raise Exception("Login fallito - Controlla log e screenshot")
             
             if not self.salva_formazione():
                 raise Exception("Impossibile salvare la formazione - Controlla screenshot")
@@ -399,9 +345,7 @@ https://github.com/tuousername/fantacalcio-bot/actions
                 logging.info("Browser chiuso")
 
 
-# ============================================================================
 # ESECUZIONE PRINCIPALE
-# ============================================================================
 if __name__ == "__main__":
     print("=" * 70)
     print("🤖  FANTACALCIO BOT - Salvataggio Automatico Formazione")
@@ -412,14 +356,12 @@ if __name__ == "__main__":
     print("=" * 70)
     print()
     
-    # Leggi credenziali da variabili d'ambiente (GitHub Secrets)
     username = os.environ.get('FANTACALCIO_USERNAME')
     password = os.environ.get('FANTACALCIO_PASSWORD')
     
     if not username or not password:
         print("❌ ERRORE: Credenziali non configurate!")
         print("Configura FANTACALCIO_USERNAME e FANTACALCIO_PASSWORD nei GitHub Secrets")
-        print()
         exit(1)
     
     print(f"👤  Username: {username}")
@@ -429,7 +371,6 @@ if __name__ == "__main__":
     print("💡  Modalità: Salvataggio formazione attuale (senza modifiche)")
     print()
     
-    # Esegui il bot
     bot = FantacalcioBot(username, password)
     successo = bot.esegui()
     
@@ -439,12 +380,10 @@ if __name__ == "__main__":
         print("✅  OPERAZIONE COMPLETATA CON SUCCESSO!")
         print("📧  Controlla saladaniele99@gmail.com per la conferma")
         print("🏆  Formazione salvata per tutte le competizioni")
-        print("=" * 70)
         exit(0)
     else:
         print("❌  OPERAZIONE FALLITA")
         print("📄  Controlla fantacalcio_log.txt per i dettagli")
         print("📧  Dovresti aver ricevuto una email di notifica errore")
         print("🔍  Screenshot salvato in errore_*.png")
-        print("=" * 70)
         exit(1)
