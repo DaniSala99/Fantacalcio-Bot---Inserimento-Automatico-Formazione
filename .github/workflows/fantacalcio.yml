@@ -1,29 +1,29 @@
-name: Fantacalcio Bot - Inserimento Automatico
+name: Fantacalcio Bot - Salvataggio Automatico Formazione
 
 on:
   schedule:
-    # Esegui ogni martedì alle 11:00 UTC (13:00 ora italiana)
+    # Martedì alle 11:00 UTC = 13:00 ora italiana
     - cron: '0 11 * * 2'
-    # Esegui ogni giovedì alle 11:00 UTC (13:00 ora italiana)
+    # Giovedì alle 11:00 UTC = 13:00 ora italiana
     - cron: '0 11 * * 4'
   
-  # Permette di eseguire manualmente il workflow dalla UI di GitHub
+  # Permette di eseguire manualmente il workflow
   workflow_dispatch:
 
 jobs:
-  inserisci-formazione:
+  salva-formazione:
     runs-on: ubuntu-latest
     
     steps:
     - name: 📥 Checkout repository
       uses: actions/checkout@v4
     
-    - name: 🐍 Setup Python
+    - name: 🐍 Setup Python 3.11
       uses: actions/setup-python@v5
       with:
         python-version: '3.11'
     
-    - name: 🌐 Setup Chrome
+    - name: 🌐 Setup Google Chrome
       uses: browser-actions/setup-chrome@latest
       with:
         chrome-version: stable
@@ -31,20 +31,31 @@ jobs:
     - name: 🚗 Install ChromeDriver
       uses: nanasess/setup-chromedriver@v2
     
-    - name: 📦 Install dependencies
+    - name: 📦 Install Python dependencies
       run: |
+        echo "Installazione dipendenze Python..."
+        pip install --upgrade pip
         pip install selenium
+        echo "✅ Dipendenze installate"
     
-    - name: ✅ Verifica installazione Chrome
+    - name: ✅ Verifica ambiente
       run: |
-        echo "Verifica Google Chrome..."
+        echo "======================================"
+        echo "Verifica ambiente di esecuzione"
+        echo "======================================"
+        echo "Python version:"
+        python --version
+        echo ""
+        echo "Google Chrome:"
         which google-chrome
         google-chrome --version
-        echo "Verifica ChromeDriver..."
+        echo ""
+        echo "ChromeDriver:"
         which chromedriver
         chromedriver --version
+        echo "======================================"
     
-    - name: 🤖 Esegui bot Fantacalcio
+    - name: 🤖 Esegui Fantacalcio Bot
       id: bot_execution
       env:
         FANTACALCIO_USERNAME: ${{ secrets.FANTACALCIO_USERNAME }}
@@ -53,15 +64,26 @@ jobs:
         GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
         CHROME_BIN: /usr/bin/google-chrome
       run: |
-        echo "🚀 Avvio Fantacalcio Bot..."
+        echo "======================================"
+        echo "🤖 AVVIO FANTACALCIO BOT"
+        echo "======================================"
+        echo "Lega: Lega Paralimpica Seregno"
+        echo "Username: $FANTACALCIO_USERNAME"
+        echo "Modalità: Salvataggio formazione attuale"
+        echo "Timestamp: $(date '+%Y-%m-%d %H:%M:%S')"
+        echo "======================================"
+        echo ""
         python fantacalcio_bot.py
-        echo "✅ Esecuzione completata"
+        echo ""
+        echo "======================================"
+        echo "✅ ESECUZIONE COMPLETATA"
+        echo "======================================"
     
-    - name: 📄 Upload logs in caso di errore
+    - name: 📄 Upload logs e screenshot in caso di errore
       if: failure()
       uses: actions/upload-artifact@v4
       with:
-        name: error-logs-${{ github.run_number }}
+        name: error-logs-run-${{ github.run_number }}
         path: |
           fantacalcio_log.txt
           errore_*.png
@@ -70,12 +92,24 @@ jobs:
     - name: 📊 Riepilogo esecuzione
       if: always()
       run: |
-        echo "================================"
-        echo "📊 RIEPILOGO ESECUZIONE"
-        echo "================================"
+        echo "=================================================="
+        echo "📊 RIEPILOGO ESECUZIONE WORKFLOW"
+        echo "=================================================="
         echo "Workflow: ${{ github.workflow }}"
         echo "Run ID: ${{ github.run_id }}"
         echo "Run Number: ${{ github.run_number }}"
-        echo "Status: ${{ job.status }}"
-        echo "Timestamp: $(date)"
-        echo "================================"
+        echo "Job Status: ${{ job.status }}"
+        echo "Timestamp: $(date '+%Y-%m-%d %H:%M:%S')"
+        echo "Repository: ${{ github.repository }}"
+        echo "Branch: ${{ github.ref }}"
+        echo "=================================================="
+        echo ""
+        if [ "${{ job.status }}" == "success" ]; then
+          echo "✅ Formazione salvata con successo!"
+          echo "📧 Email di conferma inviata a saladaniele99@gmail.com"
+        else
+          echo "❌ Esecuzione fallita"
+          echo "📧 Email di errore inviata a saladaniele99@gmail.com"
+          echo "📄 Log e screenshot disponibili negli Artifacts"
+        fi
+        echo "=================================================="
