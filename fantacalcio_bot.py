@@ -1,6 +1,6 @@
 """
 Fantacalcio Bot - Salvataggio Automatico Formazione
-VERSIONE FINALE con gestione popup cookie e banner pubblicitario
+VERSIONE FINALE COMPLETA con navigazione leghe
 
 Repository: https://github.com/tuousername/fantacalcio-bot
 Lega: https://leghe.fantacalcio.it/lega-paralimpica-seregno
@@ -68,12 +68,9 @@ class FantacalcioBot:
         """Chiude il popup dei cookie se presente"""
         try:
             logging.info("Controllo presenza popup cookie...")
-            
-            # Usa il selettore ESATTO che hai trovato
             wait_popup = WebDriverWait(self.driver, 8)
             
             try:
-                # Pulsante "Accept all" con id="pt-accept-all"
                 cookie_btn = wait_popup.until(
                     EC.element_to_be_clickable((By.ID, "pt-accept-all"))
                 )
@@ -93,12 +90,9 @@ class FantacalcioBot:
         """Chiude il banner pubblicitario se presente"""
         try:
             logging.info("Controllo presenza banner pubblicitario...")
-            
             wait_banner = WebDriverWait(self.driver, 5)
             
             try:
-                # Cerca il pulsante di chiusura con l'SVG che hai trovato
-                # Il pulsante contiene un SVG con path specifico
                 close_btn = wait_banner.until(
                     EC.element_to_be_clickable((
                         By.XPATH, 
@@ -110,7 +104,6 @@ class FantacalcioBot:
                 time.sleep(2)
                 return True
             except TimeoutException:
-                # Prova con un selettore alternativo più generico
                 try:
                     close_btn = wait_banner.until(
                         EC.element_to_be_clickable((
@@ -142,25 +135,24 @@ class FantacalcioBot:
             self.driver.get("https://leghe.fantacalcio.it/lega-paralimpica-seregno")
             time.sleep(4)
             
-            # STEP 1.1: CHIUDI IL POPUP DEI COOKIE
+            # Chiudi popup cookie
             self.chiudi_popup_cookie()
             
-            # STEP 1.2: Clicca sul pulsante "Accedi"
+            # Click "Accedi"
             logging.info("Ricerca pulsante 'Accedi'...")
             accedi_btn = self.wait.until(
                 EC.element_to_be_clickable((By.XPATH, "//a[@href='https://leghe.fantacalcio.it/login' and contains(@class, 'btn-primary')]"))
             )
-            # Scroll al pulsante per sicurezza
             self.driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", accedi_btn)
             time.sleep(1)
             accedi_btn.click()
             logging.info("✅ Click su 'Accedi' effettuato")
             time.sleep(4)
             
-            # STEP 1.3: CHIUDI IL BANNER PUBBLICITARIO
+            # Chiudi banner pubblicitario
             self.chiudi_banner_pubblicitario()
             
-            # STEP 1.4: Inserisci username
+            # Inserisci username
             logging.info(f"Inserimento username: {self.username}")
             username_field = self.wait.until(
                 EC.presence_of_element_located((By.CSS_SELECTOR, "input[formcontrolname='username']"))
@@ -170,7 +162,7 @@ class FantacalcioBot:
             logging.info("✅ Username inserito")
             time.sleep(1)
             
-            # STEP 1.5: Inserisci password
+            # Inserisci password
             logging.info("Inserimento password...")
             password_field = self.wait.until(
                 EC.presence_of_element_located((By.CSS_SELECTOR, "input[formcontrolname='password']"))
@@ -180,7 +172,7 @@ class FantacalcioBot:
             logging.info("✅ Password inserita")
             time.sleep(1)
             
-            # STEP 1.6: Clicca su LOGIN
+            # Click LOGIN
             logging.info("Click su pulsante LOGIN...")
             login_btn = self.wait.until(
                 EC.element_to_be_clickable((By.XPATH, "//button[contains(@class, 'ant-btn-primary') and .//span[text()='LOGIN']]"))
@@ -197,14 +189,54 @@ class FantacalcioBot:
             self.driver.save_screenshot(f"errore_login_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png")
             return False
     
+    def naviga_alla_lega(self):
+        """Naviga alla lega specifica dopo il login"""
+        try:
+            logging.info("=" * 60)
+            logging.info("STEP 2: NAVIGAZIONE ALLA LEGA")
+            logging.info("=" * 60)
+            
+            # STEP 2.1: Click su "S-Cup Ella League"
+            logging.info("Ricerca categoria 'S-Cup Ella League'...")
+            categoria_btn = self.wait.until(
+                EC.element_to_be_clickable((By.XPATH, "//span[@class='league-name' and text()='S-Cup Ella league']"))
+            )
+            self.driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", categoria_btn)
+            time.sleep(1)
+            categoria_btn.click()
+            logging.info("✅ Click su 'S-Cup Ella League' effettuato")
+            time.sleep(3)
+            
+            # STEP 2.2: Click su "Lega Paralimpica Seregno"
+            logging.info("Ricerca lega 'Lega Paralimpica Seregno'...")
+            lega_link = self.wait.until(
+                EC.element_to_be_clickable((
+                    By.XPATH, 
+                    "//a[@class='league' and @data-id='3012920' and @href='https://leghe.fantacalcio.it/lega-paralimpica-seregno']"
+                ))
+            )
+            self.driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", lega_link)
+            time.sleep(1)
+            lega_link.click()
+            logging.info("✅ Click su 'Lega Paralimpica Seregno' effettuato")
+            time.sleep(4)
+            
+            logging.info("✅✅ NAVIGAZIONE ALLA LEGA COMPLETATA")
+            return True
+            
+        except Exception as e:
+            logging.error(f"❌ ERRORE nella navigazione alla lega: {str(e)}")
+            self.driver.save_screenshot(f"errore_navigazione_lega_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png")
+            return False
+    
     def salva_formazione(self):
         """Salva la formazione attuale per tutte le competizioni"""
         try:
             logging.info("=" * 60)
-            logging.info("STEP 2: SALVATAGGIO FORMAZIONE")
+            logging.info("STEP 3: SALVATAGGIO FORMAZIONE")
             logging.info("=" * 60)
             
-            # STEP 2.1: Clicca su "Schiera Formazione"
+            # STEP 3.1: Click su "Schiera Formazione"
             logging.info("Ricerca link 'Schiera Formazione'...")
             inserisci_formazione_link = self.wait.until(
                 EC.element_to_be_clickable((
@@ -218,7 +250,7 @@ class FantacalcioBot:
             logging.info("✅ Click su 'Schiera Formazione' effettuato")
             time.sleep(4)
             
-            # STEP 2.2: Clicca direttamente su "Salva per tutte le competizioni"
+            # STEP 3.2: Click su "Salva per tutte le competizioni"
             logging.info("Ricerca pulsante 'Salva per tutte le competizioni'...")
             salva_btn = self.wait.until(
                 EC.element_to_be_clickable((
@@ -226,7 +258,6 @@ class FantacalcioBot:
                     "//button[contains(@class, 'btn-orange') and contains(@onclick, 'saveFormationForAllComps')]"
                 ))
             )
-            # Scroll al pulsante
             self.driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", salva_btn)
             time.sleep(1)
             salva_btn.click()
@@ -321,6 +352,9 @@ Inserisci/Salva MANUALMENTE la formazione prima dell'inizio delle partite!
             
             if not self.login():
                 raise Exception("Login fallito - Controlla log e screenshot")
+            
+            if not self.naviga_alla_lega():
+                raise Exception("Navigazione alla lega fallita - Controlla log e screenshot")
             
             if not self.salva_formazione():
                 raise Exception("Impossibile salvare la formazione - Controlla screenshot")
