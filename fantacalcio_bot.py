@@ -1,12 +1,9 @@
 """
 Fantacalcio Bot - Salvataggio Automatico Formazione
-VERSIONE FINALE COMPLETA con navigazione leghe
+VERSIONE ROBUSTA con gestione notifiche e fallback multipli
 
 Repository: https://github.com/tuousername/fantacalcio-bot
 Lega: https://leghe.fantacalcio.it/lega-paralimpica-seregno
-
-Username: saladany99
-Email notifiche: saladaniele99@gmail.com
 """
 
 from selenium import webdriver
@@ -190,10 +187,10 @@ class FantacalcioBot:
             return False
     
     def naviga_alla_lega(self):
-        """Naviga alla lega specifica dopo il login"""
+        """Naviga alla lega specifica dopo il login - VERSIONE ROBUSTA"""
         try:
             logging.info("=" * 60)
-            logging.info("STEP 2: NAVIGAZIONE ALLA LEGA")
+            logging.info("STEP 2: NAVIGAZIONE ALLA LEGA (ROBUSTA)")
             logging.info("=" * 60)
             
             # STEP 2.1: Click su "S-Cup Ella League"
@@ -207,18 +204,85 @@ class FantacalcioBot:
             logging.info("✅ Click su 'S-Cup Ella League' effettuato")
             time.sleep(3)
             
-            # STEP 2.2: Click su "Lega Paralimpica Seregno"
-            logging.info("Ricerca lega 'Lega Paralimpica Seregno'...")
-            lega_link = self.wait.until(
-                EC.element_to_be_clickable((
-                    By.XPATH, 
-                    "//a[@class='league' and @data-id='3012920' and @href='https://leghe.fantacalcio.it/lega-paralimpica-seregno']"
-                ))
-            )
+            # STEP 2.2: Click su "Lega Paralimpica Seregno" - CON FALLBACK MULTIPLI
+            logging.info("Ricerca lega 'Lega Paralimpica Seregno' (con fallback per notifiche)...")
+            
+            lega_link = None
+            metodo_usato = ""
+            
+            # METODO 1: Cerca per data-id (il più specifico, ignora notifiche)
+            try:
+                logging.info("  → Tentativo 1: Ricerca per data-id='3012920'...")
+                lega_link = WebDriverWait(self.driver, 8).until(
+                    EC.element_to_be_clickable((By.XPATH, "//a[@data-id='3012920']"))
+                )
+                metodo_usato = "data-id"
+                logging.info("  ✅ Trovato con data-id")
+            except TimeoutException:
+                logging.info("  ⚠️ Non trovato con data-id, provo metodo alternativo...")
+            
+            # METODO 2: Cerca per href della lega (ignora classi e attributi aggiuntivi)
+            if not lega_link:
+                try:
+                    logging.info("  → Tentativo 2: Ricerca per href contenente 'lega-paralimpica-seregno'...")
+                    lega_link = WebDriverWait(self.driver, 8).until(
+                        EC.element_to_be_clickable((
+                            By.XPATH, 
+                            "//a[contains(@href, 'lega-paralimpica-seregno')]"
+                        ))
+                    )
+                    metodo_usato = "href"
+                    logging.info("  ✅ Trovato con href")
+                except TimeoutException:
+                    logging.info("  ⚠️ Non trovato con href, provo ricerca testuale...")
+            
+            # METODO 3: Cerca per testo "Lega Paralimpica Seregno" (il più robusto)
+            if not lega_link:
+                try:
+                    logging.info("  → Tentativo 3: Ricerca per testo 'Lega Paralimpica Seregno'...")
+                    lega_link = WebDriverWait(self.driver, 8).until(
+                        EC.element_to_be_clickable((
+                            By.XPATH, 
+                            "//a[contains(., 'Lega Paralimpica Seregno')]"
+                        ))
+                    )
+                    metodo_usato = "testo"
+                    logging.info("  ✅ Trovato con ricerca testuale")
+                except TimeoutException:
+                    logging.info("  ⚠️ Non trovato con ricerca testuale, provo JavaScript...")
+            
+            # METODO 4: JavaScript fallback - trova tutti i link e cerca per testo
+            if not lega_link:
+                try:
+                    logging.info("  → Tentativo 4: Ricerca con JavaScript...")
+                    links = self.driver.find_elements(By.TAG_NAME, "a")
+                    for link in links:
+                        if "lega-paralimpica-seregno" in link.get_attribute("href") or \
+                           "Lega Paralimpica Seregno" in link.text:
+                            lega_link = link
+                            metodo_usato = "javascript"
+                            logging.info("  ✅ Trovato con JavaScript")
+                            break
+                except Exception as e:
+                    logging.warning(f"  ⚠️ Errore con JavaScript: {str(e)}")
+            
+            # Se ancora non trovato, genera errore
+            if not lega_link:
+                raise Exception("Impossibile trovare il link della lega con nessun metodo")
+            
+            # Click sul link trovato
             self.driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", lega_link)
             time.sleep(1)
-            lega_link.click()
-            logging.info("✅ Click su 'Lega Paralimpica Seregno' effettuato")
+            
+            # Prova prima con click standard, poi con JavaScript se fallisce
+            try:
+                lega_link.click()
+                logging.info(f"✅ Click su 'Lega Paralimpica Seregno' effettuato (metodo: {metodo_usato})")
+            except Exception as e:
+                logging.info(f"  ⚠️ Click standard fallito, provo con JavaScript...")
+                self.driver.execute_script("arguments[0].click();", lega_link)
+                logging.info(f"✅ Click JavaScript su 'Lega Paralimpica Seregno' effettuato (metodo: {metodo_usato})")
+            
             time.sleep(4)
             
             logging.info("✅✅ NAVIGAZIONE ALLA LEGA COMPLETATA")
@@ -227,6 +291,16 @@ class FantacalcioBot:
         except Exception as e:
             logging.error(f"❌ ERRORE nella navigazione alla lega: {str(e)}")
             self.driver.save_screenshot(f"errore_navigazione_lega_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png")
+            
+            # Log aggiuntivi per debug
+            try:
+                logging.info("DEBUG: URL corrente: " + self.driver.current_url)
+                logging.info("DEBUG: Salvando HTML della pagina per analisi...")
+                with open(f"debug_pagina_{datetime.now().strftime('%Y%m%d_%H%M%S')}.html", "w", encoding="utf-8") as f:
+                    f.write(self.driver.page_source)
+            except:
+                pass
+            
             return False
     
     def salva_formazione(self):
@@ -277,8 +351,7 @@ class FantacalcioBot:
         try:
             mittente = os.environ.get('GMAIL_ADDRESS')
             password = os.environ.get('GMAIL_APP_PASSWORD')
-            destinatari = ['saladaniele99@gmail.com']
-            """destinatari = ['saladaniele99@gmail.com', 'davidebanini99@gmail.com']"""
+            destinatari = ['saladaniele99@gmail.com', 'davidebanini99@gmail.com']
             
             if not mittente or not password:
                 logging.warning("⚠️ Credenziali email non configurate, notifica saltata")
@@ -422,6 +495,3 @@ if __name__ == "__main__":
         print("📧  Dovresti aver ricevuto una email di notifica errore")
         print("🔍  Screenshot salvato in errore_*.png")
         exit(1)
-
-
-
