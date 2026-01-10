@@ -6,6 +6,8 @@ on:
     - cron: '0 11 * * 2'
     # Giovedì alle 11:00 UTC = 13:00 ora italiana
     - cron: '0 11 * * 4'
+    # Venerdì alle 11:00 UTC = 13:00 ora italiana
+    - cron: '0 11 * * 5'
   
   # Permette di eseguire manualmente il workflow
   workflow_dispatch:
