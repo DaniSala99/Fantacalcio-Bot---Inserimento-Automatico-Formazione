@@ -2,116 +2,113 @@ name: Fantacalcio Bot - Salvataggio Automatico Formazione
 
 on:
   schedule:
-    # Martedì alle 11:00 UTC = 13:00 ora italiana
-    - cron: '0 11 * * 2'
-    # Giovedì alle 11:00 UTC = 13:00 ora italiana
-    - cron: '0 11 * * 4'
-    # Venerdì alle 11:00 UTC = 13:00 ora italiana
-    - cron: '0 11 * * 5'
-  
-  # Permette di eseguire manualmente il workflow
-  workflow_dispatch:
+    # ─── INVERNO (CET = UTC+1): 14:00 CET = 13:00 UTC ───────────────────
+    - cron: '0 13 * * 2,4,5'   # Mar/Gio/Ven – inverno CET  (ottobre–marzo)
+    # ─── ESTATE (CEST = UTC+2): 14:00 CEST = 12:00 UTC ──────────────────
+    - cron: '0 12 * * 2,4,5'   # Mar/Gio/Ven – estate CEST  (marzo–ottobre)
+    # NOTA: entrambi i cron sono attivi tutto l'anno → in inverno il bot
+    # gira alle 14:00 CET (13 UTC) + alle 13:00 CET (12 UTC, ignorabile),
+    # in estate gira alle 14:00 CEST (12 UTC) + alle 15:00 CEST (13 UTC).
+    # Essendo il salvataggio idempotente, la doppia esecuzione è innocua.
+    # ─── BACKUP weekend: sabato 09:00 UTC (~11:00 CET / 10:00 CEST) ─────
+    - cron: '0 9 * * 6'        # Sabato – backup per giornate che iniziano nel weekend
+
+  workflow_dispatch:           # Esecuzione manuale
 
 jobs:
   salva-formazione:
     runs-on: ubuntu-latest
-    
+
     steps:
-    - name: 📥 Checkout repository
-      uses: actions/checkout@v4
-    
-    - name: 🐍 Setup Python 3.11
-      uses: actions/setup-python@v5
-      with:
-        python-version: '3.11'
-    
-    - name: 🌐 Setup Google Chrome
-      uses: browser-actions/setup-chrome@latest
-      with:
-        chrome-version: stable
-    
-    - name: 🚗 Install ChromeDriver
-      uses: nanasess/setup-chromedriver@v2
-    
-    - name: 📦 Install Python dependencies
-      run: |
-        echo "Installazione dipendenze Python..."
-        pip install --upgrade pip
-        pip install selenium
-        echo "✅ Dipendenze installate"
-    
-    - name: ✅ Verifica ambiente
-      run: |
-        echo "======================================"
-        echo "Verifica ambiente di esecuzione"
-        echo "======================================"
-        echo "Python version:"
-        python --version
-        echo ""
-        echo "Google Chrome:"
-        which google-chrome
-        google-chrome --version
-        echo ""
-        echo "ChromeDriver:"
-        which chromedriver
-        chromedriver --version
-        echo "======================================"
-    
-    - name: 🤖 Esegui Fantacalcio Bot
-      id: bot_execution
-      env:
-        FANTACALCIO_USERNAME: ${{ secrets.FANTACALCIO_USERNAME }}
-        FANTACALCIO_PASSWORD: ${{ secrets.FANTACALCIO_PASSWORD }}
-        GMAIL_ADDRESS: ${{ secrets.GMAIL_ADDRESS }}
-        GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
-        CHROME_BIN: /usr/bin/google-chrome
-      run: |
-        echo "======================================"
-        echo "🤖 AVVIO FANTACALCIO BOT"
-        echo "======================================"
-        echo "Lega: Lega Paralimpica Seregno"
-        echo "Username: $FANTACALCIO_USERNAME"
-        echo "Modalità: Salvataggio formazione attuale"
-        echo "Timestamp: $(date '+%Y-%m-%d %H:%M:%S')"
-        echo "======================================"
-        echo ""
-        python fantacalcio_bot.py
-        echo ""
-        echo "======================================"
-        echo "✅ ESECUZIONE COMPLETATA"
-        echo "======================================"
-    
-    - name: 📄 Upload logs e screenshot in caso di errore
-      if: failure()
-      uses: actions/upload-artifact@v4
-      with:
-        name: error-logs-run-${{ github.run_number }}
-        path: |
-          fantacalcio_log.txt
-          errore_*.png
-        retention-days: 7
-    
-    - name: 📊 Riepilogo esecuzione
-      if: always()
-      run: |
-        echo "=================================================="
-        echo "📊 RIEPILOGO ESECUZIONE WORKFLOW"
-        echo "=================================================="
-        echo "Workflow: ${{ github.workflow }}"
-        echo "Run ID: ${{ github.run_id }}"
-        echo "Run Number: ${{ github.run_number }}"
-        echo "Job Status: ${{ job.status }}"
-        echo "Timestamp: $(date '+%Y-%m-%d %H:%M:%S')"
-        echo "Repository: ${{ github.repository }}"
-        echo "Branch: ${{ github.ref }}"
-        echo "=================================================="
-        echo ""
-        if [ "${{ job.status }}" == "success" ]; then
-          echo "✅ Formazione salvata con successo!"
-          echo "📧 Email di conferma inviata a saladaniele99@gmail.com"
-        else
-          echo "❌ Esecuzione fallita"
-          echo "📧 Email di errore inviata a saladaniele99@gmail.com"
-          echo "📄 Log e screenshot disponibili negli Artifacts"
-        fi
-        echo "=================================================="
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+
+      - name: 🐍 Setup Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: 🌐 Setup Google Chrome
+        uses: browser-actions/setup-chrome@latest
+        with:
+          chrome-version: stable
+
+      - name: 🚗 Install ChromeDriver
+        uses: nanasess/setup-chromedriver@v2
+
+      - name: 📦 Install Python dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: ✅ Verifica ambiente
+        run: |
+          echo "Python:      $(python --version)"
+          echo "Chrome:      $(google-chrome --version)"
+          echo "ChromeDriver: $(chromedriver --version)"
+
+      # ── Primo tentativo ──────────────────────────────────────────────────
+      - name: 🤖 Esegui Fantacalcio Bot
+        id: bot_run
+        continue-on-error: true
+        env:
+          FANTACALCIO_USERNAME: ${{ secrets.FANTACALCIO_USERNAME }}
+          FANTACALCIO_PASSWORD: ${{ secrets.FANTACALCIO_PASSWORD }}
+          GMAIL_ADDRESS: ${{ secrets.GMAIL_ADDRESS }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          CHROME_BIN: /usr/bin/google-chrome
+        run: |
+          echo "=============================="
+          echo "Lega: Lega Paralimpica Seregno"
+          echo "Timestamp: $(date '+%Y-%m-%d %H:%M:%S UTC')"
+          echo "=============================="
+          python fantacalcio_bot.py
+
+      # ── Retry a livello job (se il primo tentativo fallisce) ─────────────
+      - name: 🔁 Retry Bot (se primo tentativo fallito)
+        if: steps.bot_run.outcome == 'failure'
+        env:
+          FANTACALCIO_USERNAME: ${{ secrets.FANTACALCIO_USERNAME }}
+          FANTACALCIO_PASSWORD: ${{ secrets.FANTACALCIO_PASSWORD }}
+          GMAIL_ADDRESS: ${{ secrets.GMAIL_ADDRESS }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          CHROME_BIN: /usr/bin/google-chrome
+        run: |
+          echo "Primo tentativo fallito. Attendo 90s e riprovo (job-level retry)..."
+          sleep 90
+          echo "=============================="
+          echo "Retry - Timestamp: $(date '+%Y-%m-%d %H:%M:%S UTC')"
+          echo "=============================="
+          python fantacalcio_bot.py
+
+      # ── Artifact: screenshot + log (sempre, anche in caso di successo) ───
+      - name: 📸 Upload screenshot e log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: run-${{ github.run_number }}-artifacts
+          path: |
+            screenshot_*.png
+            debug_*.html
+            errore_*.png
+            fantacalcio_log.txt
+          retention-days: 3
+          if-no-files-found: ignore
+
+      # ── Riepilogo ────────────────────────────────────────────────────────
+      - name: 📊 Riepilogo esecuzione
+        if: always()
+        run: |
+          echo "=================================================="
+          echo "Workflow:    ${{ github.workflow }}"
+          echo "Run:         #${{ github.run_number }}"
+          echo "Job status:  ${{ job.status }}"
+          echo "Timestamp:   $(date '+%Y-%m-%d %H:%M:%S UTC')"
+          echo "Repository:  ${{ github.repository }}"
+          echo "=================================================="
+          if [ "${{ job.status }}" = "success" ]; then
+            echo "✅ Formazione salvata (o tentativo effettuato)"
+          else
+            echo "❌ Job fallito – controlla gli Artifacts per log e screenshot"
+          fi
+          echo "=================================================="
