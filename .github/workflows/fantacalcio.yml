@@ -5,8 +5,28 @@ on:
     # Mar/Gio/Ven alle 12:00 UTC = 14:00 CEST (estate) / 13:00 CET (inverno)
     - cron: '0 12 * * 2,4,5'
   workflow_dispatch:
+
 jobs:
+  check-season:
+    runs-on: ubuntu-latest
+    outputs:
+      in_season: ${{ steps.check.outputs.in_season }}
+    steps:
+      - name: 📅 Verifica periodo stagione (set–giu)
+        id: check
+        run: |
+          MONTH=$(date +%-m)
+          if [ "$MONTH" -eq 7 ] || [ "$MONTH" -eq 8 ]; then
+            echo "Fuori stagione (luglio/agosto) – esecuzione saltata."
+            echo "in_season=false" >> $GITHUB_OUTPUT
+          else
+            echo "In stagione (mese $MONTH) – procedo."
+            echo "in_season=true" >> $GITHUB_OUTPUT
+          fi
+
   salva-formazione:
+    needs: check-season
+    if: needs.check-season.outputs.in_season == 'true'
     runs-on: ubuntu-latest
 
     steps:
@@ -33,8 +53,8 @@ jobs:
 
       - name: ✅ Verifica ambiente
         run: |
-          echo "Python:      $(python --version)"
-          echo "Chrome:      $(google-chrome --version)"
+          echo "Python:       $(python --version)"
+          echo "Chrome:       $(google-chrome --version)"
           echo "ChromeDriver: $(chromedriver --version)"
 
       # ── Primo tentativo ──────────────────────────────────────────────────
