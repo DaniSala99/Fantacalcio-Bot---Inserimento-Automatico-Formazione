@@ -2,19 +2,9 @@ name: Fantacalcio Bot - Salvataggio Automatico Formazione
 
 on:
   schedule:
-    # ─── INVERNO (CET = UTC+1): 14:00 CET = 13:00 UTC ───────────────────
-    - cron: '0 13 * * 2,4,5'   # Mar/Gio/Ven – inverno CET  (ottobre–marzo)
-    # ─── ESTATE (CEST = UTC+2): 14:00 CEST = 12:00 UTC ──────────────────
-    - cron: '0 12 * * 2,4,5'   # Mar/Gio/Ven – estate CEST  (marzo–ottobre)
-    # NOTA: entrambi i cron sono attivi tutto l'anno → in inverno il bot
-    # gira alle 14:00 CET (13 UTC) + alle 13:00 CET (12 UTC, ignorabile),
-    # in estate gira alle 14:00 CEST (12 UTC) + alle 15:00 CEST (13 UTC).
-    # Essendo il salvataggio idempotente, la doppia esecuzione è innocua.
-    # ─── BACKUP weekend: sabato 09:00 UTC (~11:00 CET / 10:00 CEST) ─────
-    - cron: '0 9 * * 6'        # Sabato – backup per giornate che iniziano nel weekend
-
-  workflow_dispatch:           # Esecuzione manuale
-
+    # Mar/Gio/Ven alle 12:00 UTC = 14:00 CEST (estate) / 13:00 CET (inverno)
+    - cron: '0 12 * * 2,4,5'
+  workflow_dispatch:
 jobs:
   salva-formazione:
     runs-on: ubuntu-latest
